@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EPW → MET TC360 Converter</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --surface2: #f0f0ec;
+    --border: #e2e2dc;
+    --text: #1a1a18;
+    --text-muted: #8a8a84;
+    --accent: #2563eb;
+    --accent-light: #eff4ff;
+    --accent2: #059669;
+    --accent2-light: #ecfdf5;
+    --warn: #d97706;
+    --warn-light: #fffbeb;
+    --danger: #dc2626;
+    --p50: #3b82f6;
+    --p80: #f59e0b;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: var(--text);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo-mark svg { width: 20px; height: 20px; fill: white; }
+
+  header h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+  header p { font-size: 12px; color: var(--text-muted); }
+
+  .badge {
+    margin-left: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--surface2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    letter-spacing: 0.05em;
+  }
+
+  main {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 24px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: var(--shadow);
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title .step-num {
+    width: 20px; height: 20px;
+    background: var(--text);
+    color: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  /* Drop zone */
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+    position: relative;
+  }
+  .dropzone:hover, .dropzone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .dropzone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .dropzone-icon { font-size: 32px; margin-bottom: 12px; }
+  .dropzone-label { font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .dropzone-sub { font-size: 12px; color: var(--text-muted); }
+  .dropzone-filename {
+    margin-top: 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* Questions */
+  .question-group { margin-bottom: 24px; }
+  .question-group:last-child { margin-bottom: 0; }
+  .question-label {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .question-label .q-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--text-muted);
+  }
+
+  .radio-group, .toggle-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .radio-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface2);
+  }
+  .radio-option:hover { border-color: var(--accent); background: var(--accent-light); }
+  .radio-option.selected { border-color: var(--accent); background: var(--accent-light); }
+  .radio-option input { display: none; }
+  .radio-dot {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .radio-option.selected .radio-dot {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+  .radio-option.selected .radio-dot::after {
+    content: '';
+    width: 6px; height: 6px;
+    background: white;
+    border-radius: 50%;
+  }
+  .radio-title { font-size: 13px; font-weight: 500; }
+  .radio-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toggle-row:hover { border-color: var(--accent); }
+  .toggle-row.active { border-color: var(--accent); background: var(--accent-light); }
+
+  .toggle-switch {
+    width: 36px; height: 20px;
+    background: var(--border);
+    border-radius: 10px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: white;
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: left 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle-row.active .toggle-switch { background: var(--accent); }
+  .toggle-row.active .toggle-switch::after { left: 19px; }
+
+  /* CFD input */
+  .cfd-input-area {
+    margin-top: 12px;
+    padding: 16px;
+    background: var(--warn-light);
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    display: none;
+  }
+  .cfd-input-area.visible { display: block; }
+  .cfd-input-area label { font-size: 12px; font-weight: 500; margin-bottom: 8px; display: block; color: var(--warn); }
+
+  /* Form inputs */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .form-field { display: flex; flex-direction: column; gap: 6px; }
+  .form-field label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+
+  input[type=text], input[type=number], select {
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    background: var(--surface2);
+    color: var(--text);
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  input[type=text]:focus, input[type=number]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: white;
+  }
+
+  .roughness-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: end;
+  }
+  .roughness-divider {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding-top: 28px;
+    font-style: italic;
+  }
+
+  .alpha-preview {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    margin-top: 4px;
+  }
+
+  /* Convert button */
+  .btn-convert {
+    width: 100%;
+    padding: 14px;
+    background: var(--text);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: -0.01em;
+  }
+  .btn-convert:hover { background: #2d2d2b; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  .btn-convert:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* Notice box */
+  .notice {
+    padding: 14px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: none;
+  }
+  .notice.info { background: var(--accent-light); border: 1px solid #bfdbfe; color: #1d4ed8; }
+  .notice.warn { background: var(--warn-light); border: 1px solid #fde68a; color: #92400e; }
+  .notice.success { background: var(--accent2-light); border: 1px solid #a7f3d0; color: #065f46; }
+  .notice.error { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); }
+  .notice.visible { display: block; }
+
+  /* Results section */
+  #results { display: none; flex-direction: column; gap: 20px; }
+  #results.visible { display: flex; }
+
+  /* Download buttons */
+  .download-row { display: flex; gap: 12px; }
+  .btn-dl {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .btn-dl-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .btn-dl-primary:hover { background: #1d4ed8; }
+  .btn-dl-secondary {
+    background: white;
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn-dl-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Stats table */
+  .stats-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: var(--surface2);
+    padding: 4px;
+    border-radius: 8px;
+    width: fit-content;
+  }
+  .stats-tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text-muted);
+  }
+  .stats-tab.active {
+    background: white;
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .td-dir { font-weight: 600; font-size: 13px; }
+  .td-mono { font-family: 'DM Mono', monospace; font-size: 12px; }
+  .td-p50 { color: var(--p50); font-weight: 500; }
+  .td-p80 { color: var(--p80); font-weight: 500; }
+  .td-count { color: var(--text-muted); }
+
+  /* Wind rose */
+  #windRoseCanvas {
+    display: block;
+    margin: 0 auto;
+  }
+
+  .rose-legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 16px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* Preview table */
+  .preview-wrap { overflow-x: auto; }
+  .preview-wrap table td { font-family: 'DM Mono', monospace; font-size: 11px; }
+
+  /* Separator */
+  .sep { height: 1px; background: var(--border); }
+
+  /* Disabled overlay */
+  .card.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .version-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border-radius: 4px;
+    border: 1px solid #bfdbfe;
+  }
+
+  /* Unit toggle pill */
+  .unit-toggle {
+    display: flex;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .unit-opt {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .unit-opt:hover { color: var(--text); }
+  .unit-opt.active {
+    background: white;
+    color: var(--accent);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">
+    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  </div>
+  <div>
+    <h1>EPW → MET TC360 Converter</h1>
+    <p>OrbitalStack Custom Weather File Generator</p>
+  </div>
+  <span class="badge">v1.0 · EA/EPW</span>
+</header>
+
+<main>
+
+  <!-- STEP 1: Upload -->
+  <div class="card" id="card-upload">
+    <div class="card-title"><span class="step-num">1</span> Upload EA/EPW File</div>
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".epw">
+      <div class="dropzone-icon">📂</div>
+      <div class="dropzone-label">Drop your .epw file here</div>
+      <div class="dropzone-sub">or click to browse</div>
+      <div class="dropzone-filename" id="dropzone-filename"></div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Questions -->
+  <div class="card" id="card-questions">
+    <div class="card-title"><span class="step-num">2</span> Configuration</div>
+
+    <!-- Q1 -->
+    <div class="question-group">
+      <div class="question-label"><span class="q-tag">Q1</span> Is this an EA/EPW (Expanded AMeDAS) file?</div>
+      <div class="radio-group">
+        <label class="radio-option" id="q1-yes">
+          <input type="radio" name="q1" value="yes">
+          <div class="radio-dot"></div>
+          <div>
+            <div class="radio-title">Yes — EA/EPW format <span class="version-tag">Supported</span></div>
+            <div class="radio-desc">Expanded AMeDAS EPW file (Japanese weather data, 30-min accumulated radiation)</div>
+          </div>
+        </label>
+        <label class="radio-option" id="q1-no">
+          <input type="radio" name="q1" value="no">
+          <div class="radio-dot"></div>
+          <div>
+            <div class="radio-title">No — Standard EPW format</div>
+            <div class="radio-desc">Coming in Version 2 — standard EnergyPlus EPW files</div>
+          </div>
+        </label>
+      </div>
+      <div class="notice warn visible" id="q1-warn" style="margin-top:12px; display:none;">
+        ⚠️ Standard EPW support is planned for Version 2. Please use an EA/EPW file to proceed.
+      </div>
+    </div>
+
+    <div class="sep" style="margin: 20px 0;"></div>
+
+    <!-- Q2 -->
+    <div class="question-group" id="q2-group">
+      <div class="question-label"><span class="q-tag">Q2</span> What is this simulation for?</div>
+      <div class="radio-group">
+        <label class="radio-option" id="q2-wind">
+          <input type="radio" name="q2" value="wind">
+          <div class="radio-dot"></div>
+          <div>
+            <div class="radio-title">Wind Simulation Only</div>
+            <div class="radio-desc">Humidity, direct radiation, temperature & pressure set to 0. Diffuse radiation always mapped.</div>
+          </div>
+        </label>
+        <label class="radio-option" id="q2-thermal">
+          <input type="radio" name="q2" value="thermal">
+          <div class="radio-dot"></div>
+          <div>
+            <div class="radio-title">Thermal Comfort Analysis</div>
+            <div class="radio-desc">Full conversion of all 8 fields. See conversion assumptions below for details.</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div class="sep" style="margin: 20px 0;"></div>
+
+    <!-- Q3 -->
+    <div class="question-group" id="q3-group">
+      <div class="question-label"><span class="q-tag">Q3</span> CFD Accuracy Comparison Mode</div>
+      <div class="toggle-group">
+        <div class="toggle-row" id="cfd-toggle" onclick="toggleCFD()">
+          <div>
+            <div class="radio-title">Enable CFD Comparison Mode</div>
+            <div class="radio-desc">Fabricate a uniform wind speed input for controlled validation against CFD results</div>
+          </div>
+          <div class="toggle-switch" id="cfd-toggle-switch"></div>
+        </div>
+      </div>
+      <div class="cfd-input-area" id="cfd-input-area">
+        <label>Uniform wind speed for ALL records — enter in m/s (final input value)</label>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <input type="number" id="cfdSpeed" min="0" max="50" step="0.1" value="5.0" style="max-width:120px;">
+          <span style="font-size:11px; color:var(--warn);">
+            → Wind stats report: m/s &nbsp;|&nbsp; TC360 CSV output: ×3.6 → km/h &nbsp;|&nbsp; No terrain correction applied.
+            <br>Wind direction still uses real EPW values (rounded to nearest 10°).
+          </span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- STEP 3: Adjustments -->
+  <div class="card" id="card-adjust">
+    <div class="card-title"><span class="step-num">3</span> Wind Speed Adjustments</div>
+
+    <!-- CFD mode: hide terrain correction, show info -->
+    <div id="cfd-no-correction-notice" class="notice info" style="display:none; margin-bottom:16px;">
+      ℹ️ <strong>CFD Mode active:</strong> Terrain roughness correction is skipped. The uniform speed you entered is used directly — only unit conversion (m/s → km/h) is applied for the TC360 CSV. Wind stats report uses m/s as entered.
+    </div>
+
+    <div id="terrain-correction-section">
+      <!-- OrbitalStack target info -->
+      <div style="margin-bottom:16px; padding:12px 14px; background:var(--accent-light); border:1px solid #bfdbfe; border-radius:8px; font-size:12px; color:#1d4ed8;">
+        🎯 <strong>OrbitalStack target:</strong> Wind data must be at 10 m height with open terrain roughness (α = 0.14, z₀ = 0.026). Select the <em>measurement site</em> roughness below — the tool corrects to OrbitalStack's required standard automatically.
+      </div>
+
+      <div class="roughness-row" style="margin-bottom:20px;">
+        <!-- Category selector — AIJ 2004 Japanese standard -->
+        <div class="form-field">
+          <label>Terrain Roughness Category <span style="font-size:10px; color:var(--text-muted);">(AIJ 2004 / 日本建築学会)</span></label>
+          <select id="roughnessCat" onchange="syncRoughness('cat')">
+            <option value="">— Select measurement site category —</option>
+            <option value="0.10|0.001">I — 海岸・海上 / Coast & open sea (α=0.10, z₀=0.001 m)</option>
+            <option value="0.15|0.03">II — 田園地帯 / Rural, farmland (α=0.15, z₀=0.03 m)</option>
+            <option value="0.20|0.10">III — 都市周辺・住宅・森林 / Suburban, industrial, forest (α=0.20, z₀=0.10 m)</option>
+            <option value="0.27|0.50">IV — 地方中小都市市街地 / Small–medium city center (α=0.27, z₀=0.50 m)</option>
+            <option value="0.35|1.00">V — 大都市の中心市街地 / Large city center (α=0.35, z₀≥1.00 m)</option>
+          </select>
+        </div>
+
+        <div class="roughness-divider">or</div>
+
+        <!-- Manual alpha + z₀ -->
+        <div class="form-field">
+          <label>Custom Power Law Exponent (α)</label>
+          <input type="number" id="alphaInput" min="0.05" max="0.50" step="0.01" placeholder="e.g. 0.15" oninput="syncRoughness('alpha')">
+        </div>
+      </div>
+
+      <!-- z₀ display row -->
+      <div class="form-grid" style="margin-bottom:20px;">
+        <div class="form-field">
+          <label>Roughness Length z₀ (m) <span style="font-size:10px; color:var(--text-muted);">— reference only, auto-filled from category</span></label>
+          <input type="number" id="z0Input" min="0.0001" max="5" step="0.001" placeholder="e.g. 0.03" oninput="syncRoughness('z0')" style="background:var(--surface2);">
+          <div class="alpha-preview" id="alpha-preview"></div>
+        </div>
+        <div class="form-field">
+          <label style="color:var(--accent); font-weight:600;">OrbitalStack Target (fixed)</label>
+          <div style="padding:9px 12px; border:1px solid #bfdbfe; border-radius:8px; background:var(--accent-light); font-size:13px; font-family:'DM Mono',monospace; color:#1d4ed8;">
+            α = 0.14 &nbsp;|&nbsp; z₀ = 0.026 m &nbsp;|&nbsp; h = 10 m
+          </div>
+          <div class="alpha-preview" style="color:#1d4ed8;">Open terrain equivalent — confirmed by OrbitalStack (Jan, 2024)</div>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Observation / Anemometer Height (m)
+            <span id="anem-badge" style="display:none; margin-left:6px; font-family:'DM Mono',monospace; font-size:10px; padding:2px 7px; background:var(--accent2-light); border:1px solid #a7f3d0; border-radius:4px; color:var(--accent2);">auto-read from EPW</span>
+          </label>
+          <input type="number" id="obsHeight" value="10" min="1" max="200" step="0.5" oninput="onObsHeightChange()">
+          <div class="alpha-preview" id="obs-preview"></div>
+        </div>
+        <div class="form-field">
+          <label>Output File Name</label>
+          <input type="text" id="fileName" placeholder="e.g. KAGOSHIMA_2015">
+        </div>
+      </div>
+    </div>
+
+    <!-- File name shown even in CFD mode -->
+    <div id="cfd-filename-only" style="display:none;">
+      <div class="form-field">
+        <label>Output File Name</label>
+        <input type="text" id="fileNameCFD" placeholder="e.g. KAGOSHIMA_CFD">
+      </div>
+    </div>
+
+  </div>
+
+  <!-- STEP 4: Location Map -->
+  <div class="card" id="card-map" style="display:none;">
+    <div class="card-title"><span class="step-num">4</span> Station Location — Terrain Roughness Reference</div>
+    <div style="margin-bottom:12px; font-size:13px; color:var(--text-muted);">
+      Auto-extracted from EPW header. Use the map to assess the <strong>measurement site terrain roughness</strong> and confirm your AIJ 2004 category selection in Step 3.
+    </div>
+    <div id="map-meta" style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; font-family:'DM Mono',monospace;">
+      <span>📍 <strong id="map-city">—</strong></span>
+      <span>Lat: <strong id="map-lat">—</strong></span>
+      <span>Lon: <strong id="map-lon">—</strong></span>
+      <span>Elev: <strong id="map-elev">—</strong> m</span>
+      <span>Station ID: <strong id="map-station">—</strong></span>
+    </div>
+    <!-- Embedded map via OpenStreetMap — no API key required -->
+    <div id="map-container" style="width:100%; height:380px; border-radius:10px; overflow:hidden; border:1px solid var(--border); background:var(--surface2);">
+      <iframe id="map-iframe"
+        style="width:100%; height:100%; border:none;"
+        loading="lazy"
+        allowfullscreen
+        src="about:blank">
+      </iframe>
+    </div>
+    <div style="margin-top:10px; font-size:11px; color:var(--text-muted);">
+      Map source: © <a href="https://www.openstreetmap.org" target="_blank" style="color:var(--accent);">OpenStreetMap</a> contributors.
+      Zoom in to assess surrounding terrain — buildings, vegetation, water bodies — before selecting roughness category.
+    </div>
+  </div>
+
+  <!-- CONVERT -->
+  <button class="btn-convert" id="btn-convert" onclick="runConversion()">Convert & Generate Files</button>
+  <div class="notice" id="main-notice"></div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <div class="card">
+      <div class="card-title"><span class="step-num">✓</span> Download Outputs</div>
+      <div class="download-row">
+        <button class="btn-dl btn-dl-primary" onclick="downloadCSV()">⬇ Download Custom MET .csv</button>
+        <button class="btn-dl btn-dl-secondary" onclick="downloadTXT()">⬇ Download Wind Stats .txt</button>
+      </div>
+    </div>
+
+    <!-- Wind Rose -->
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <span style="display:flex;align-items:center;gap:8px;"><span class="step-num">◎</span> Wind Rose — 16 Directions (22.5° bins)</span>
+        <div class="unit-toggle" id="roseUnitToggle">
+          <span class="unit-opt active" onclick="setUnit('ms')">m/s</span>
+          <span class="unit-opt" onclick="setUnit('kmh')">km/h</span>
+        </div>
+      </div>
+      <canvas id="windRoseCanvas" width="480" height="480"></canvas>
+      <div class="rose-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--p50);"></div>50th Percentile</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--p80);"></div>80th Percentile</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e2e2dc;"></div>Frequency</div>
+      </div>
+    </div>
+
+    <!-- Stats table -->
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <span style="display:flex;align-items:center;gap:8px;"><span class="step-num">≡</span> Wind Statistics — 16 Directions (22.5° bins)</span>
+        <div class="unit-toggle" id="tableUnitToggle">
+          <span class="unit-opt active" onclick="setUnit('ms')">m/s</span>
+          <span class="unit-opt" onclick="setUnit('kmh')">km/h</span>
+        </div>
+      </div>
+      <div id="stats-table-container"></div>
+    </div>
+
+    <!-- Conversion assumptions -->
+    <div class="card">
+      <div class="card-title"><span class="step-num">ℹ</span> Conversion Assumptions & Notes</div>
+      <table style="font-size:12px;">
+        <thead><tr><th>Field</th><th>EPW Source</th><th>Conversion</th><th>TC360 Output</th></tr></thead>
+        <tbody>
+          <tr><td>Wind Speed</td><td>Col 22 — m/s</td><td>
+            <strong>Step 1 — Height correction (same terrain class):</strong><br>
+            V<sub>10m,site</sub> = V<sub>obs</sub> × (10/h<sub>obs</sub>)<sup>α_site</sup><br>
+            <em>If h<sub>obs</sub>=10m → factor=1.0, no change</em><br><br>
+            <strong>Step 2 — Terrain roughness correction (gradient wind two-way trip):</strong><br>
+            Up: &nbsp;&nbsp;V<sub>600m</sub> = V<sub>10m,site</sub> × (600/10)<sup>α_site</sup><br>
+            Down: V<sub>10m,open</sub> = V<sub>600m</sub> × (10/600)<sup>0.14</sup><br>
+            Combined: V<sub>10m,open</sub> = V<sub>10m,site</sub> × 60<sup>(α_site − 0.14)</sup><br>
+            <em>60 = 600m gradient height ÷ 10m reference. α_open=0.14 (OrbitalStack standard)</em><br><br>
+            <strong>Step 3 — Unit:</strong> × 3.6 → km/h
+          </td><td>km/h</td></tr>
+          <tr><td>Wind Direction</td><td>Col 21 — degrees</td><td>Rounded to nearest 10° (OrbitalStack requirement)</td><td>degrees</td></tr>
+          <tr><td>Temperature</td><td>Col 7 — Dry Bulb °C</td><td>Direct</td><td>°C</td></tr>
+          <tr><td>Relative Humidity</td><td>Col 9 — %</td><td>Direct</td><td>%</td></tr>
+          <tr><td>Surface Pressure</td><td>Col 10 — Atmospheric Station Pressure, Pa</td><td>÷ 1000</td><td>kPa</td></tr>
+          <tr><td style="color:var(--p50);font-weight:600;">Diffuse Radiation (DHI)</td><td>Col 16 — W/m² (EA/EPW)</td><td>W/m² × 1 m² unit area = W <span style="color:var(--warn);">*</span></td><td>W</td></tr>
+          <tr><td style="color:var(--p50);font-weight:600;">Direct Radiation (DNI)</td><td>Col 15 — W/m² (EA/EPW)</td><td>W/m² × 1 m² unit area = W <span style="color:var(--warn);">*</span></td><td>W</td></tr>
+          <tr><td>Date/Time</td><td>Cols 1–4 — Year, Month, Day, Hour (1–24)</td><td>Hour − 1 → 0–23 local time</td><td>yyyy-mm-dd_HH:MM</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px; padding:10px 12px; background:var(--warn-light); border:1px solid #fde68a; border-radius:6px; font-size:11px; color:#92400e;">
+        <strong>* Radiation assumption:</strong> EPW stores radiation as Wh/m² (hourly accumulated irradiance per unit area).
+        TC360 expects W (watts = power). For hourly data, 1 Wh/m² over 1 hour equals 1 W·h/m², and assuming a
+        <strong>unit reference area of 1 m²</strong>, the numeric value is preserved as W.
+        This is standard meteorological practice (power per unit area proxy).
+        If your simulation requires actual surface area, multiply the output values by the true area in m².
+      </div>
+    </div>
+
+    <!-- Data preview -->
+    <div class="card">
+      <div class="card-title"><span class="step-num">≡</span> Output Preview — First 5 Rows</div>
+      <div class="preview-wrap" id="preview-table"></div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let epwRows = [];
+let convertedRows = [];
+let rawDirs = [];          // raw EPW directions (before 10° rounding) — used for 22.5° wind rose binning
+let windStats16 = [];       // always stored in km/h; converted on display
+let csvBlob = null;
+let txtBlob = null;
+let cfdMode = false;
+let currentRoseDirs = 18;
+let statsUnit = 'ms';       // 'ms' or 'kmh' — user display preference
+
+// ─── File Upload ──────────────────────────────────────────────────────────────
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+  document.getElementById('dropzone-filename').textContent = '📄 ' + file.name;
+  // Auto-fill filename
+  const base = file.name.replace(/\.epw$/i, '');
+  document.getElementById('fileName').value = base;
+  const reader = new FileReader();
+  reader.onload = e => parseEPW(e.target.result);
+  reader.readAsText(file);
+}
+
+function parseEPW(text) {
+  const lines = text.split(/\r?\n/);
+  epwRows = [];
+
+  // ── Extract location from LOCATION row (line 0)
+  // Format: LOCATION,City,Region,Country,Source,StationID,Lat,Lon,Timezone,Elevation
+  const locCols = (lines[0] || '').split(',');
+  const locCity    = locCols[1] ? locCols[1].trim() : '—';
+  const locRegion  = locCols[2] ? locCols[2].trim() : '';
+  const locCountry = locCols[3] ? locCols[3].trim() : '';
+  const locStation = locCols[5] ? locCols[5].trim() : '—';
+  const locLat     = parseFloat(locCols[6]);
+  const locLon     = parseFloat(locCols[7]);
+  const locElev    = parseFloat(locCols[9]);
+
+  // ── Populate map card
+  if (!isNaN(locLat) && !isNaN(locLon)) {
+    document.getElementById('map-city').textContent    = `${locCity}${locRegion ? ', ' + locRegion : ''}${locCountry ? ', ' + locCountry : ''}`;
+    document.getElementById('map-lat').textContent     = locLat.toFixed(4);
+    document.getElementById('map-lon').textContent     = locLon.toFixed(4);
+    document.getElementById('map-elev').textContent    = isNaN(locElev) ? '—' : locElev.toFixed(1);
+    document.getElementById('map-station').textContent = locStation;
+
+    // OpenStreetMap embed — zoom 13 gives good terrain context
+    const zoom = 13;
+    const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${(locLon-0.08).toFixed(5)},${(locLat-0.06).toFixed(5)},${(locLon+0.08).toFixed(5)},${(locLat+0.06).toFixed(5)}&layer=mapnik&marker=${locLat.toFixed(5)},${locLon.toFixed(5)}`;
+    document.getElementById('map-iframe').src = mapUrl;
+    document.getElementById('card-map').style.display = 'block';
+  } else {
+    document.getElementById('card-map').style.display = 'none';
+  }
+
+  // ── Auto-read anemometer height from COMMENTS 2 (row 7, index 6)
+  // Format: "... height of anemometer = 10.0 [m]"
+  const comments2 = lines[6] || '';
+  const anemMatch = comments2.match(/height\s+of\s+anemometer\s*=\s*([\d.]+)/i);
+  const anemBadge = document.getElementById('anem-badge');
+  const obsPreview = document.getElementById('obs-preview');
+  if (anemMatch) {
+    const detectedH = parseFloat(anemMatch[1]);
+    document.getElementById('obsHeight').value = detectedH;
+    anemBadge.style.display = 'inline';
+    anemBadge.title = `Parsed from COMMENTS 2: "${comments2.trim().slice(0, 80)}..."`;
+    obsPreview.textContent = `Suggested from EPW: ${detectedH} m — override if station records differ (e.g. actual tower height from metadata)`;
+    // Trigger preview update if alpha is already set
+    const alpha = parseFloat(document.getElementById('alphaInput').value);
+    const z0 = parseFloat(document.getElementById('z0Input').value) || null;
+    if (!isNaN(alpha)) updateAlphaPreview(alpha, z0);
+  } else {
+    anemBadge.style.display = 'none';
+    obsPreview.textContent = 'Not found in EPW header — please enter manually';
+  }
+
+  // ── Parse data rows (skip 8 header lines)
+  for (let i = 8; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const cols = line.split(',');
+    if (cols.length < 22) continue;
+    epwRows.push(cols);
+  }
+
+  showNotice('main-notice', 'info',
+    `✓ Parsed ${epwRows.length} hourly records — ${locCity}${locRegion ? ', ' + locRegion : ''} (${locLat.toFixed(3)}°N, ${locLon.toFixed(3)}°E).` +
+    (anemMatch ? ` Anemometer height auto-detected: ${anemMatch[1]} m.` : ' Anemometer height not found in header — please enter manually.')
+  );
+}
+
+function onObsHeightChange() {
+  // When user overrides, remove the auto badge and update preview
+  document.getElementById('anem-badge').style.display = 'none';
+  const alpha = parseFloat(document.getElementById('alphaInput').value);
+  const z0 = parseFloat(document.getElementById('z0Input').value) || null;
+  if (!isNaN(alpha)) updateAlphaPreview(alpha, z0);
+}
+
+// ─── Q1 Radio ────────────────────────────────────────────────────────────────
+document.querySelectorAll('input[name="q1"]').forEach(r => {
+  r.addEventListener('change', () => {
+    document.querySelectorAll('#q1-yes, #q1-no').forEach(el => el.classList.remove('selected'));
+    r.closest('.radio-option').classList.add('selected');
+    const warn = document.getElementById('q1-warn');
+    if (r.value === 'no') {
+      warn.style.display = 'block';
+    } else {
+      warn.style.display = 'none';
+    }
+  });
+});
+
+document.querySelectorAll('input[name="q2"]').forEach(r => {
+  r.addEventListener('change', () => {
+    document.querySelectorAll('#q2-wind, #q2-thermal').forEach(el => el.classList.remove('selected'));
+    r.closest('.radio-option').classList.add('selected');
+  });
+});
+
+// ─── CFD Toggle ──────────────────────────────────────────────────────────────
+function toggleCFD() {
+  cfdMode = !cfdMode;
+  const row = document.getElementById('cfd-toggle');
+  const area = document.getElementById('cfd-input-area');
+  const terrainSection = document.getElementById('terrain-correction-section');
+  const cfdNotice = document.getElementById('cfd-no-correction-notice');
+  const cfdFilenameOnly = document.getElementById('cfd-filename-only');
+
+  if (cfdMode) {
+    row.classList.add('active');
+    area.classList.add('visible');
+    terrainSection.style.display = 'none';
+    cfdNotice.style.display = 'block';
+    cfdFilenameOnly.style.display = 'block';
+  } else {
+    row.classList.remove('active');
+    area.classList.remove('visible');
+    terrainSection.style.display = 'block';
+    cfdNotice.style.display = 'none';
+    cfdFilenameOnly.style.display = 'none';
+  }
+}
+
+// ─── Roughness Sync ──────────────────────────────────────────────────────────
+function syncRoughness(source) {
+  if (source === 'cat') {
+    const val = document.getElementById('roughnessCat').value;
+    if (val) {
+      const [alpha, z0] = val.split('|');
+      document.getElementById('alphaInput').value = alpha;
+      document.getElementById('z0Input').value = z0;
+      updateAlphaPreview(parseFloat(alpha), parseFloat(z0));
+    }
+  } else if (source === 'alpha') {
+    const alpha = parseFloat(document.getElementById('alphaInput').value);
+    if (!isNaN(alpha)) {
+      document.getElementById('roughnessCat').value = '';  // clear category
+      const z0 = parseFloat(document.getElementById('z0Input').value) || null;
+      updateAlphaPreview(alpha, z0);
+    }
+  } else if (source === 'z0') {
+    const z0 = parseFloat(document.getElementById('z0Input').value);
+    if (!isNaN(z0)) {
+      document.getElementById('roughnessCat').value = '';  // clear category
+      const alpha = parseFloat(document.getElementById('alphaInput').value) || null;
+      updateAlphaPreview(alpha, z0);
+    }
+  }
+}
+
+function updateAlphaPreview(alpha, z0) {
+  const h = parseFloat(document.getElementById('obsHeight').value) || 10;
+  const z0Str = z0 != null ? `z₀=${z0} m` : 'z₀=?';
+  if (!alpha) { document.getElementById('alpha-preview').textContent = ''; return; }
+  const heightFactor    = Math.pow(10 / h, alpha);
+  const roughnessFactor = Math.pow(60, alpha - 0.14);   // true gradient wind: 60^(α−0.14)
+  const totalFactor     = heightFactor * roughnessFactor;
+  document.getElementById('alpha-preview').textContent =
+    `Step 1 height ×${heightFactor.toFixed(4)}  ×  Step 2 roughness 60^(${alpha.toFixed(2)}−0.14) = ×${roughnessFactor.toFixed(4)}  =  total ×${totalFactor.toFixed(4)}` +
+    `  [${z0Str}, ${h}m → open terrain α=0.14]`;
+}
+
+// obsHeight changes handled by oninput="onObsHeightChange()" on the element
+
+// ─── Conversion ───────────────────────────────────────────────────────────────
+function runConversion() {
+  // Validation
+  const q1 = document.querySelector('input[name="q1"]:checked');
+  const q2 = document.querySelector('input[name="q2"]:checked');
+
+  if (!epwRows.length) { showNotice('main-notice', 'error', '✗ Please upload an EPW file first.'); return; }
+  if (!q1) { showNotice('main-notice', 'error', '✗ Please answer Q1 (EA/EPW file type).'); return; }
+  if (q1.value === 'no') { showNotice('main-notice', 'warn', '⚠️ Standard EPW support coming in Version 2.'); return; }
+  if (!q2) { showNotice('main-notice', 'error', '✗ Please select simulation type (Q2).'); return; }
+
+  // In CFD mode, skip terrain validation
+  let alpha = NaN;
+  let obsH = 10;
+  let z0Site = null;
+  if (!cfdMode) {
+    alpha = parseFloat(document.getElementById('alphaInput').value);
+    z0Site = parseFloat(document.getElementById('z0Input').value) || null;
+    if (isNaN(alpha)) { showNotice('main-notice', 'error', '✗ Please set terrain roughness (category or custom α).'); return; }
+    obsH = parseFloat(document.getElementById('obsHeight').value) || 10;
+  }
+
+  const windOnly = q2.value === 'wind';
+  const uniformSpeedMs = cfdMode ? parseFloat(document.getElementById('cfdSpeed').value) : null;
+
+  // OrbitalStack target alpha (for re-profiling if needed — currently direct height correction)
+  const ALPHA_TARGET = 0.14;
+
+  // Convert
+  rawDirs = [];
+  convertedRows = epwRows.map(cols => {
+    const year  = cols[0].trim();
+    const month = cols[1].trim().padStart(2,'0');
+    const day   = cols[2].trim().padStart(2,'0');
+    let hour    = parseInt(cols[3].trim()); // EPW 1–24
+    hour = hour - 1; // convert to 0-23
+    const dateStr = `${year}-${month}-${day}_${String(hour).padStart(2,'0')}:00`;
+
+    // Raw direction for wind rose binning (22.5° bins — before OrbitalStack 10° rounding)
+    const rawDir = parseFloat(cols[20]) || 0;
+    rawDirs.push(rawDir);
+
+    // Wind direction for CSV — round to nearest 10° as required by OrbitalStack
+    const windDir = Math.round(rawDir / 10) * 10 % 360;
+
+    // Wind speed — two-step correction to OrbitalStack standard (10m, α=0.14)
+    let windKmh;
+    if (cfdMode) {
+      // CFD mode: uniform speed in m/s → km/h only, no correction
+      windKmh = (uniformSpeedMs * 3.6).toFixed(2);
+    } else {
+      let windMps = parseFloat(cols[21]) || 0;
+      // Step 1 — Height correction (power law, same terrain class):
+      //   V_10m_site = V_obs × (10/h_obs)^α_site
+      //   Stays within site roughness class — if h_obs=10m, factor=1.0
+      const heightFactor = Math.pow(10 / obsH, alpha);
+      const windAt10m = windMps * heightFactor;
+
+      // Step 2 — Roughness correction (true gradient wind pathway, power law):
+      //   Go up to gradient wind height (600m) and back down to 10m open terrain
+      //   V_up   = V_10m_site × (600/10)^α_site
+      //   V_down = V_up       × (10/600)^α_open   where α_open=0.14
+      //   Combined: V_10m_open = V_10m_site × 60^(α_site - 0.14)
+      //   Per Jan/OrbitalStack: power law used internally, 600m as standard translation point
+      const ALPHA_OPEN = 0.14;
+      const roughnessFactor = Math.pow(60, alpha - ALPHA_OPEN);
+      windKmh = (windAt10m * roughnessFactor * 3.6).toFixed(2);
+    }
+
+    const dhi = parseFloat(cols[15]) || 0;  // Diffuse Horizontal Radiation — always mapped (no asterisk)
+
+    if (windOnly) {
+      // Zeroed: Relative Humidity*, Direct Radiation*, Temperature*, Surface Pressure* (asterisk = optional)
+      // Diffuse Radiation has NO asterisk → always required
+      return [dateStr, windKmh, 0, dhi, 0, 0, 0, windDir];
+    }
+
+    const rh       = parseFloat(cols[8]) || 0;
+    const dni      = parseFloat(cols[14]) || 0;  // Direct Normal Radiation
+    const temp     = parseFloat(cols[6]) || 0;
+    const pressKpa = ((parseFloat(cols[9]) || 0) / 1000).toFixed(3);
+
+    return [dateStr, windKmh, rh, dhi, dni, temp, pressKpa, windDir];
+  });
+
+  // Resolve file name (CFD mode uses its own field)
+  const resolvedName = cfdMode
+    ? (document.getElementById('fileNameCFD').value || document.getElementById('fileName').value || 'output')
+    : (document.getElementById('fileName').value || 'output');
+  document.getElementById('fileName').value = resolvedName;
+
+  // Build CSV blob
+  const csvContent = convertedRows.map(r => r.join(',')).join('\r\n');
+  csvBlob = new Blob([csvContent], { type: 'text/csv' });
+
+  // Wind stats — always stored in km/h internally
+  windStats16 = computeStats();
+
+  // Build TXT blob
+  txtBlob = buildTXT();
+
+  // Render
+  renderWindRose();
+  renderTable();
+  renderPreview();
+
+  document.getElementById('results').classList.add('visible');
+  showNotice('main-notice', 'success', `✓ Conversion complete — ${convertedRows.length} rows generated. Wind directions rounded to nearest 10°.`);
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── Unit Toggle ─────────────────────────────────────────────────────────────
+function setUnit(unit) {
+  statsUnit = unit;
+  document.querySelectorAll('.unit-opt').forEach(el => {
+    el.classList.toggle('active', el.textContent.trim() === (unit === 'ms' ? 'm/s' : 'km/h'));
+  });
+  renderWindRose();
+  renderTable();
+}
+
+// ─── Wind Stats ───────────────────────────────────────────────────────────────
+// 16 compass points × 22.5° — universal meteorological standard
+// Each bin spans ±11.25° around its centre angle
+// Raw EPW directions used (before 10° CSV rounding) for accurate assignment
+const DIR16_LABELS  = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const DIR16_CENTERS = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5];
+
+function computeStats() {
+  const bins = Array.from({length: 16}, () => []);
+
+  convertedRows.forEach((row, idx) => {
+    const rawDir = rawDirs[idx];           // use RAW direction, not the 10°-rounded CSV value
+    const spdKmh = parseFloat(row[1]);
+    if (isNaN(rawDir) || isNaN(spdKmh)) return;
+
+    // Find closest 22.5° compass centre (handles 360→0 wrap)
+    let bestBin = 0, bestDist = Infinity;
+    for (let i = 0; i < 16; i++) {
+      let d = Math.abs(rawDir - DIR16_CENTERS[i]);
+      if (d > 180) d = 360 - d;           // wrap-around distance
+      if (d < bestDist) { bestDist = d; bestBin = i; }
+    }
+    bins[bestBin].push(spdKmh);
+  });
+
+  return bins.map((speeds, i) => {
+    const sorted = [...speeds].sort((a, b) => a - b);
+    const p50kmh = sorted.length ? percentile(sorted, 50) : 0;
+    const p80kmh = sorted.length ? percentile(sorted, 80) : 0;
+    return {
+      label:  DIR16_LABELS[i],
+      angle:  DIR16_CENTERS[i],
+      p50kmh: +p50kmh.toFixed(2),
+      p80kmh: +p80kmh.toFixed(2),
+      p50ms:  +(p50kmh / 3.6).toFixed(2),
+      p80ms:  +(p80kmh / 3.6).toFixed(2),
+      count:  speeds.length
+    };
+  });
+}
+
+function percentile(sorted, p) {
+  const idx = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+// ─── Wind Rose Canvas ─────────────────────────────────────────────────────────
+function renderWindRose() {
+  const stats = windStats16;
+  const canvas = document.getElementById('windRoseCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const maxR = Math.min(cx, cy) - 60;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Use display unit
+  const usems = statsUnit === 'ms';
+  const getP50 = s => usems ? s.p50ms : s.p50kmh;
+  const getP80 = s => usems ? s.p80ms : s.p80kmh;
+  const unitLabel = usems ? 'm/s' : 'km/h';
+
+  // Background rings + labels at 45° offset (between N and NNE axes — no overlap)
+  const maxVal = Math.max(...stats.map(s => getP80(s)), 1);
+  const rings = 4;
+  for (let r = 1; r <= rings; r++) {
+    const radius = (r / rings) * maxR;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = '#e8e8e2';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Label at -67.5° canvas angle (between N and NNE, compass 11.25°)
+    const labelAngle = (11.25 - 90) * Math.PI / 180;
+    ctx.fillStyle = '#bbb';
+    ctx.font = '9px DM Mono, monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(((r / rings) * maxVal).toFixed(1), cx + Math.cos(labelAngle) * (radius + 3), cy + Math.sin(labelAngle) * (radius + 3));
+  }
+
+  // Axis lines — highlight N/E/S/W
+  stats.forEach(s => {
+    const angle = (s.angle - 90) * Math.PI / 180;
+    const isCardinal = s.angle % 90 === 0;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(angle) * maxR, cy + Math.sin(angle) * maxR);
+    ctx.strokeStyle = isCardinal ? '#c8c8c0' : '#e2e2dc';
+    ctx.lineWidth = isCardinal ? 1 : 0.5;
+    ctx.stroke();
+  });
+
+  // Frequency polygon
+  const maxCount = Math.max(...stats.map(s => s.count), 1);
+  ctx.beginPath();
+  stats.forEach((s, i) => {
+    const angle = (s.angle - 90) * Math.PI / 180;
+    const r = (s.count / maxCount) * maxR;
+    i === 0 ? ctx.moveTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r)
+            : ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+  });
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(226,226,220,0.4)';
+  ctx.fill();
+  ctx.strokeStyle = '#ccc';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // P50 polygon
+  ctx.beginPath();
+  stats.forEach((s, i) => {
+    const angle = (s.angle - 90) * Math.PI / 180;
+    const r = (getP50(s) / maxVal) * maxR;
+    i === 0 ? ctx.moveTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r)
+            : ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+  });
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(59,130,246,0.18)';
+  ctx.fill();
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // P80 polygon
+  ctx.beginPath();
+  stats.forEach((s, i) => {
+    const angle = (s.angle - 90) * Math.PI / 180;
+    const r = (getP80(s) / maxVal) * maxR;
+    i === 0 ? ctx.moveTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r)
+            : ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+  });
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(245,158,11,0.12)';
+  ctx.fill();
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Direction labels — bold N/E/S/W cardinals
+  stats.forEach(s => {
+    const angle = (s.angle - 90) * Math.PI / 180;
+    const isCardinal = s.angle % 90 === 0;
+    const r = maxR + (isCardinal ? 26 : 22);
+    ctx.fillStyle = isCardinal ? '#1a1a18' : '#555';
+    ctx.font = isCardinal ? 'bold 12px DM Sans, sans-serif' : '10px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(s.label, cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+  });
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a18';
+  ctx.fill();
+
+  // Units label
+  ctx.fillStyle = '#aaa';
+  ctx.font = '10px DM Mono, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(unitLabel, cx, cy - maxR - 40);
+}
+
+// ─── Stats Table ─────────────────────────────────────────────────────────────
+function renderTable() {
+  const stats = windStats16;
+  const usems = statsUnit === 'ms';
+  const unit = usems ? 'm/s' : 'km/h';
+  let html = `<table><thead><tr><th>Direction</th><th>Angle</th><th>50th %ile (${unit})</th><th>80th %ile (${unit})</th><th>Count</th></tr></thead><tbody>`;
+  stats.forEach(s => {
+    html += `<tr>
+      <td class="td-dir">${s.label}</td>
+      <td class="td-mono td-count">${s.angle}°</td>
+      <td class="td-mono td-p50">${usems ? s.p50ms : s.p50kmh}</td>
+      <td class="td-mono td-p80">${usems ? s.p80ms : s.p80kmh}</td>
+      <td class="td-mono td-count">${s.count}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('stats-table-container').innerHTML = html;
+}
+
+function switchRose(n, el) {}   // kept for compatibility, no-op
+function switchTable(n, el) {}  // kept for compatibility, no-op
+
+// ─── Preview ──────────────────────────────────────────────────────────────────
+function renderPreview() {
+  const headers = ['Date', 'Wind Speed (km/h)', 'Rel. Humidity (%)', 'Diffuse Rad. (W)', 'Direct Rad. (W)', 'Temperature (°C)', 'Surface Pressure (kPa)', 'Wind Direction (°)'];
+  let html = '<table><thead><tr>' + headers.map(h=>`<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+  convertedRows.slice(0,5).forEach(row => {
+    html += '<tr>' + row.map(v=>`<td>${v}</td>`).join('') + '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('preview-table').innerHTML = html;
+}
+
+// ─── Build TXT ────────────────────────────────────────────────────────────────
+function buildTXT() {
+  const name = document.getElementById('fileName').value || 'output';
+  const alpha = cfdMode ? 'N/A (CFD mode)' : (document.getElementById('alphaInput').value || '—');
+  const z0    = cfdMode ? 'N/A' : (document.getElementById('z0Input').value || '—');
+  const obsH  = cfdMode ? 'N/A' : (document.getElementById('obsHeight').value || '10') + ' m';
+  const uniformNote = cfdMode ? `Uniform fabricated speed: ${document.getElementById('cfdSpeed').value} m/s` : 'Real EPW wind speeds with terrain correction';
+
+  let txt = `EPW → MET TC360 Wind Statistics Report\n`;
+  txt += `${'='.repeat(72)}\n`;
+  txt += `File       : ${name}\n`;
+  txt += `Generated  : ${new Date().toISOString()}\n`;
+  txt += `Total rows : ${convertedRows.length}\n`;
+  txt += `Mode       : ${cfdMode ? 'CFD Comparison — ' + uniformNote : 'Full conversion — ' + uniformNote}\n`;
+  txt += `Site α     : ${alpha}\n`;
+  txt += `Site z₀    : ${z0} m\n`;
+  txt += `Obs. height: ${obsH}\n`;
+  txt += `Target     : 10 m, α=0.14, z₀=0.026 m (OrbitalStack open terrain standard — confirmed Jan 2024)\n`;
+  txt += `Method     :\n`;
+  txt += `  Step 1 — Height correction (power law, same terrain class):\n`;
+  txt += `    V_10m_site = V_obs × (10 / h_obs)^α_site\n`;
+  txt += `    If h_obs = 10m → factor = 1.0, no height correction applied\n\n`;
+  txt += `  Step 2 — Terrain roughness correction (gradient wind two-way trip):\n`;
+  txt += `    Up:       V_600m     = V_10m_site × (600/10)^α_site\n`;
+  txt += `    Down:     V_10m_open = V_600m     × (10/600)^0.14\n`;
+  txt += `    Combined: V_10m_open = V_10m_site × 60^(α_site - 0.14)\n`;
+  txt += `    where 60 = 600m gradient wind height ÷ 10m reference height\n`;
+  txt += `    and α_open = 0.14 = OrbitalStack required open terrain standard\n\n`;
+  txt += `  Step 3 — Unit conversion: × 3.6 → km/h (TC360 requirement)\n\n`;
+  txt += `  Per OrbitalStack power law internal standard (confirmed Jan 2024)\n`;
+  txt += `Wind dir   : Rounded to nearest 10° (OrbitalStack requirement)\n`;
+  txt += `CSV speed  : km/h (TC360 requirement)\n`;
+  txt += `\n${'='.repeat(72)}\n`;
+  txt += `16-DIRECTION WIND STATISTICS (22.5° bins)\n`;
+  txt += `${'='.repeat(72)}\n`;
+  txt += `Direction    Angle    50th %ile (m/s)  50th %ile (km/h)  80th %ile (m/s)  80th %ile (km/h)  Count\n`;
+  txt += `${'-'.repeat(72)}\n`;
+  windStats16.forEach(s => {
+    txt += `${s.label.padEnd(12)} ${String(s.angle+'°').padEnd(8)} ` +
+           `${String(s.p50ms).padEnd(16)} ${String(s.p50kmh).padEnd(17)} ` +
+           `${String(s.p80ms).padEnd(16)} ${String(s.p80kmh).padEnd(17)} ` +
+           `${s.count}\n`;
+  });
+  txt += `\n${'='.repeat(72)}\n`;
+  txt += `Note: TC360 CSV wind speed is always in km/h as required by OrbitalStack.\n`;
+  txt += `\n`;
+  txt += `Radiation assumption:\n`;
+  txt += `  EPW stores DNI (col 15) and DHI (col 16) as Wh/m² (hourly accumulated).\n`;
+  txt += `  TC360 expects W. Conversion: Wh/m² x 1 m² unit area = W (numeric value unchanged).\n`;
+  txt += `  This assumes a unit reference area of 1 m² — standard meteorological practice.\n`;
+  txt += `  To convert to actual power, multiply by true surface area in m².\n`;
+  return new Blob([txt], { type: 'text/plain' });
+}
+
+// ─── Downloads ────────────────────────────────────────────────────────────────
+function downloadCSV() {
+  const name = document.getElementById('fileName').value || 'output';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(csvBlob);
+  a.download = name + '_MET_TC360.csv';
+  a.click();
+}
+
+function downloadTXT() {
+  const name = document.getElementById('fileName').value || 'output';
+  txtBlob = buildTXT();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(txtBlob);
+  a.download = name + '_wind_stats.txt';
+  a.click();
+}
+
+// ─── Utility ──────────────────────────────────────────────────────────────────
+function showNotice(id, type, msg) {
+  const el = document.getElementById(id);
+  el.className = `notice ${type} visible`;
+  el.textContent = msg;
+}
+</script>
+</body>
+</html>
